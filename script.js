@@ -29,7 +29,7 @@ import { createShape } from "./shape.js"; //imports what's in shape.js
 
 const note = "C4"; // the note played when the pointer goes down
 const maxStretch = 150; //the maximum allowed distance between the original grab point and the pointer. In pixels
-const circleRadius = 80; // the radius of the circle in pixels
+const circleRadius = 50; // the radius of the circle in pixels
 
 // ---------- State ----------
 // State variables are the parts of your program that change over time.
@@ -41,6 +41,7 @@ let startY = 0; // remembers the vertical position where the user first grabbed 
 //the isnital value is zero because I don't know which position the player is gonna grab the circle from.
 
 let isBroken = false; //The pointer has not entered the circle and left.
+let circle; //declaring the variable "circle"
 // ---------- Sound ----------
 // Make the instruments and plug them into the speakers.
 const synth = new Tone.PolySynth(Tone.Synth).toDestination(); // can play several notes at once
@@ -77,6 +78,7 @@ function pointerUp(event) {
   //the user is not pressing down the pointer.
   isDragging = false;
   isBroken = false;
+  circle.setSize(100, 100); //resets the circel back to original when the user let's go of grabbing
 }
 
 function pointerMove(event) {
@@ -85,13 +87,23 @@ function pointerMove(event) {
     return; //exits the function if there is no grab and doesn't calculate the position.
   }
 
+  const x = event.clientX / window.innerWidth; //tells where the pointer is horizontally on the screen based on the width of the screen
+  const y = event.clientY / window.innerHeight; //tells where the pointer is vertically on the screen based on the height of the screen
+
   const distance = Math.hypot(event.clientX - startX, event.clientY - startY); //calculates the distance between two points. Pythagoras done for you.
+  const deltaX = event.clientX - startX; //how far left or right the pointer moves from the grab position
+  const deltaY = event.clientY - startY; //how far up or down the pointer moves from the grab position
+  const stretch = Math.max(0, distance - circleRadius); //will write what it does later
+
+  circle.setSize(100 + stretch, 100 + stretch);
 
   console.log("Distance:", distance);
 
-  if (distance > maxStretch) {
+  if (stretch > maxStretch) {
+    //resets the shape after pointer exceeds limit
     isBroken = true; //remembers that the pointer has left the circle limit
     isDragging = false; // stops the dragging calculation
+    circle.setSize(100, 100); //resets the circle back to original size when the user exceeds maxStretch
     console.log("No sound");
   }
 }
@@ -102,8 +114,8 @@ function setup() {
   use(); // start the use loop
 
   // Example: a shape near the middle of the window. Replace it with your own.
-  const example = createShape("example");
-  example.setPosition(0.5, 0.5);
+  circle = createShape("circle"); //accessible by setup and pointermove. (maybe)
+  circle.setPosition(0.5, 0.5);
 
   // Put your event listener code here
   window.addEventListener("pointerdown", pointerDown);
