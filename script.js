@@ -27,24 +27,26 @@ import { createShape } from "./shape.js"; //imports what's in shape.js
 // Settings variables should contain all of the "fixed" parts of your programs
 // For example: which notes you can play, how fast things move, the tempo.
 
-const note = "C4"; // the note played when the pointer goes down
-const maxStretch = 150; //the maximum allowed distance between the original grab point and the pointer. In pixels
+const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"]; // Array of notes.
+const maxStretch = 250; //the maximum allowed distance between the original grab point and the pointer. In pixels
 const circleRadius = 50; // the radius of the circle in pixels
 
 // ---------- State ----------
 // State variables are the parts of your program that change over time.
 // For example: where the pointer is, how fast it's moving, or whether a drone is on.
 
-let isDragging = false; // the starting state of the grabbing is false because the user hasn't yet dragged the circle. I used "let" here becasue it's a changing varibale as the user itneracts.
+let points = []; //holds the seven smaller circles/points
+let activePoint = null; //remembers which poit you are currently grabbing. Starts null becasue no point is grabbed at first.
 let startX = 0; // remembers the horizontal position where the user first grabbed grabbed the circle
 let startY = 0; // remembers the vertical position where the user first grabbed the circle
-//the isnital value is zero because I don't know which position the player is gonna grab the circle from.
+//the initial value is zero because I don't know which position the player is gonna grab the circle from.
+let isBroken = false; //The circles have not been dragegd to the limit
 
-let isBroken = false; //The pointer has not entered the circle and left.
 let circle; //declaring the variable "circle"
+let hasPlayedNote = false;
 // ---------- Sound ----------
 // Make the instruments and plug them into the speakers.
-const synth = new Tone.PolySynth(Tone.Synth).toDestination(); // can play several notes at once
+const synth = new Tone.Synth().toDestination(); // can play several notes at once
 
 // ---------- Update ----------
 // Update the state. This is called every 100ms.
@@ -61,65 +63,112 @@ function use() {
 // ---------- Controls (Event Handlers) ----------
 // Plays a note whenerver the pointer gose down regardless where y or x axis.
 function pointerDown(event) {
-  Tone.start(); //enables audio playback after user inrteraction.
+  Tone.start();
 
-  if (isBroken) {
-    return;
-  } //if the pointer exits the circle the function doesn't take place
-  startX = event.clientX; //Updates the exisiting variable 0 I wrote before with the Horizontal position of the pointer when pressed down.
-  startY = event.clientY; //Updates the exisiting variable 0 I wrote before with the Vertical position of the pointer when pressed down.
+  for (const point of points) {
+    const distance = Math.hypot(
+      event.clientX - point.homeX,
+      event.clientY - point.homeY,
+    );
 
-  isDragging = true; //records that the player has started an interaction.
+    if (distance < 20) {
+      activePoint = point;
+      startX = point.homeX;
+      startY = point.homeY;
 
-  console.log("Grabbed at", startX, startY); //Logs the position of x and y of the pointer.
+      synth.triggerAttack(point.note);
+
+      console.log("Playing note:", point.note);
+      return;
+    }
+  }
 }
 
 function pointerUp(event) {
-  //the user is not pressing down the pointer.
-  isDragging = false;
+  if (activePoint !== null) {
+    synth.triggerRelease();
+
+    activePoint.shape.setPositionPixels(
+      activePoint.homeX - 12,
+      activePoint.homeY - 12,
+    );
+  }
+
+  activePoint = null;
   isBroken = false;
-  circle.setSize(100, 100); //resets the circel back to original when the user let's go of grabbing
 }
 
 function pointerMove(event) {
-  if (!isDragging) {
-    //checks if the circle is not grabbed. "!" means "not". "!" reverses a boolean value.
-    return; //exits the function if there is no grab and doesn't calculate the position.
+  if (activePoint === null) {
+    return;
   }
 
-  const x = event.clientX / window.innerWidth; //tells where the pointer is horizontally on the screen based on the width of the screen
-  const y = event.clientY / window.innerHeight; //tells where the pointer is vertically on the screen based on the height of the screen
+  const deltaX = event.clientX - activePoint.homeX;
+  const deltaY = event.clientY - activePoint.homeY;
+  const distance = Math.hypot(deltaX, deltaY);
 
-  const distance = Math.hypot(event.clientX - startX, event.clientY - startY); //calculates the distance between two points. Pythagoras done for you.
-  const deltaX = event.clientX - startX; //how far left or right the pointer moves from the grab position
-  const deltaY = event.clientY - startY; //how far up or down the pointer moves from the grab position
-  const stretch = Math.max(0, distance - circleRadius); //will write what it does later
+  if (distance >= maxStretch) {
+    synth.triggerRelease();
 
-  circle.setSize(100 + stretch, 100 + stretch);
+    activePoint.shape.setPositionPixels(
+      activePoint.homeX - 12,
+      activePoint.homeY - 12,
+    );
 
-  console.log("Distance:", distance);
-
-  if (stretch > maxStretch) {
-    //resets the shape after pointer exceeds limit
-    isBroken = true; //remembers that the pointer has left the circle limit
-    isDragging = false; // stops the dragging calculation
-    circle.setSize(100, 100); //resets the circle back to original size when the user exceeds maxStretch
-    console.log("No sound");
+    activePoint = null;
+    isBroken = true;
+    return;
   }
+
+  const baseFrequency = Tone.Frequency(activePoint.note).toFrequency();
+  const pitch = baseFrequency * Math.pow(2, distance / maxStretch);
+
+  synth.frequency.rampTo(pitch, 0.05);
+
+  activePoint.shape.setPositionPixels(event.clientX - 12, event.clientY - 12);
 }
 // ---------- Setup ----------
 // Setup is run once, at the start of the program. It sets everything up for us!
 function setup() {
-  update(); // start the update loop
-  use(); // start the use loop
+  update();
+  use();
 
-  // Example: a shape near the middle of the window. Replace it with your own.
-  circle = createShape("circle"); //accessible by setup and pointermove. (maybe)
-  circle.setPosition(0.5, 0.5);
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
 
-  // Put your event listener code here
+  // Create the big stationary circle
+  circle = createShape("circle");
+  circle.setSize(200, 200);
+  circle.setPositionPixels(centerX - 100, centerY - 100);
+
+  // Create seven small circles around it
+  const radius = 65;
+  const pointSize = 24;
+
+  for (let i = 0; i < notes.length; i++) {
+    const angle = (i / notes.length) * Math.PI * 2;
+
+    const x = centerX + radius * Math.cos(angle) - pointSize / 2;
+    const y = centerY + radius * Math.sin(angle) - pointSize / 2;
+
+    const point = createShape("circle");
+    point.setSize(24, 24);
+    point.setColour(60, 100, 50, 1);
+    point.setPositionPixels(x, y);
+
+    points.push({
+      shape: point, // tha actual yellow ball
+      note: notes[i], // the musial note assigned to the ball
+      homeX: x + pointSize / 2, // original horizontal centre
+      homeY: y + pointSize / 2, // original vertical centre
+    });
+
+    console.log("Created point", i, x, y);
+  }
+
   window.addEventListener("pointerdown", pointerDown);
-  window.addEventListener("pointermove", pointerMove); //tells the browser to listen for when the pointer moves and run the function of pointerMove.
-  window.addEventListener("pointerup", pointerUp); //tells the browser to listen for when the pointer is not being dragged.
+  window.addEventListener("pointermove", pointerMove);
+  window.addEventListener("pointerup", pointerUp);
 }
-setup(); // Always remember to call setup()!
+
+setup();
