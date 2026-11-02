@@ -25,25 +25,22 @@ import { createShape } from "./shape.js"; //imports what's in shape.js
 
 // ---------- Settings ----------
 //contains fixed values of my instrument
-
-const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"]; // Array of notes that I want my instrument to play. I used const because I don't intend to change or re-assign the array of notes for the instrument.
-const maxStretch = 250; //the maximum allowed distance between the original grab point and the pointer. Measured in pixels
+const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"]; //The notes I want the instrument to play
 
 // ---------- State ----------
 // info about what is happening live. Things that are changin belong in state. Fixed stuff belongs in settings.
-let isBroken = false;
-let startX = 0;
-let startY = 0;
-let circles = []; //holds the seven smaller circles. Will later use circles.push to give info
-let activeCircle = null; //remembers which circle you are currently grabbing. Starts null becasue user haasn't grabbed a circle when the program first starts.
-let circle; //declaring the variable "circle". Will use later to station the big circle in the middle.
+
+let startX = 0; //Stores an orignal Horizontal position. Used to remember the horizontal starting position of the circle being dragged.
+let startY = 0; //Same as above but for Vertical position
+let circles = []; // Holds the seven circles, but instead of naming one by one will use .push() later.
+let activeCircle = null; //This rememebrs which circle is being dragged.
+let bigCircle; //Used to store the stationary big circle later
 
 // ---------- Sound ----------
 // Make the instruments and plug them into the speakers.
-const synth = new Tone.Synth().toDestination(); // Plays one note at once. Also I need to change the frequency of each circle on its own later which is why I changed from Tone.PolySynth to Tone.Synth. In other words it's Monophonic.
-
-// ---------- Update ----------
+const synth = new Tone.Synth().toDestination(); //This allows one note to play when the user interacts with a circle. Used because it's monophonic and allows easier change of frequency.
 // Update the state. This is called every 100ms.
+
 function update() {
   setTimeout(update, 100);
 }
@@ -57,115 +54,102 @@ function use() {
 // Functions that should respond to events
 
 function pointerDown(event) {
-  Tone.start(); //starts the Tone.js audio context. Used to play a sound when user interacts
+  Tone.start(); //starts the Tone.js audio stuff. (Actviates the audio system)
 
   for (const circle of circles) {
-    // the program goes through the 7 cricles to see if the user has graabbed one.
+    // goes through the array of circles. It's a for....of loop
     let distance = Math.hypot(
-      //calculates the pythagoras. In other words the distance from the point of origin to the current.
-      event.clientX - circle.homeX, //"homeX" is the original horizontal centre of the grabbed small circle. It is stored in "setup"
-      event.clientY - circle.homeY, //"homeY" is the original vertical centre of the grabbed small circle. It is stored in "setup"
-    );
+      event.clientX - circle.originX,
+      event.clientY - circle.originY,
+    ); // use this to clauclate the distance between the pointer and the small circles so that it can select a circle
 
-    if (distance < 20) {
-      activeCircle = circle; //tells the program which circles is currently selected
-      startX = circle.homeX;
-      startY = circle.homeY;
-
-      synth.triggerAttack(circle.note);
-
-      console.log("Playing note:", circle.note);
-      return;
+    if (
+      distance < 20
+    ) //Means if pointer is less than 20 pixels away from a small circle's center
+    {
+      activeCircle = circle; //remembers which circle is being dragged
+      startX = circle.originX; //startX remembers the central original Horizontal position of the grabbed circle.
+      startY = circle.originY; // startY remembers the central orginal Veritcal position of the grabbed cricle.
+      synth.triggerAttack(circle.note); // tells the program to release the note assigned to the selected circle
+      console.log("Playing note:", circle.note); // prints in console the note being played
+      return; //stops the for...of loop from continuaously checking the other circles since the circle the user grabbed has been found
     }
   }
 }
 
 function pointerUp(event) {
-  if (activeCircle !== null) {
-    synth.triggerRelease();
-
+  if (activeCircle !== null) //means if a circle has been grabbed
+  {
+    synth.triggerRelease(); //tells the porgram to stop playing the note when the player releases the grabbed circle
     activeCircle.shape.setPositionPixels(
-      activeCircle.homeX - 12,
-      activeCircle.homeY - 12,
-    );
-  }
+      //this tells the porgram to find the shape of the grabbed circle and to return it to it's original postion
 
-  activeCircle = null;
-  isBroken = false;
+      activeCircle.originX - 12, //originX stores the center Horizontal position of the grabbed circle and minus twelve moves the postion to the edge because setPositionPixels takes the position of the edge
+      activeCircle.originY - 12, // same but vertical position
+    );
+
+    activeCircle = null; // tells the program that no circle is grabbed anymore.
+  }
 }
 
 function pointerMove(event) {
-  if (activeCircle === null) // checks wether a circle is selected
-  {
+  if (activeCircle === null) {
     return;
+    // the above "if" condition tells the program to not run this function if no circle is grabbed
   }
-
-  const deltaX = event.clientX - activeCircle.homeX;
-  const deltaY = event.clientY - activeCircle.homeY;
-  const distance = Math.hypot(deltaX, deltaY);
-
-  if (distance >= maxStretch) {
-    synth.triggerRelease();
-
-    activeCircle.shape.setPositionPixels(
-      activeCircle.homeX - 12,
-      activeCircle.homeY - 12,
-    );
-
-    activeCircle = null;
-    isBroken = true;
-    return;
-  }
-
-  const baseFrequency = Tone.Frequency(activeCircle.note).toFrequency();
-  const pitch = baseFrequency * Math.pow(2, distance / maxStretch);
-
-  synth.frequency.rampTo(pitch, 0.05);
-
-  activeCircle.shape.setPositionPixels(event.clientX - 12, event.clientY - 12);
+  const deltaX = event.clientX - activeCircle.originX; //calculates how far the grabbed circle has moved from it's orignal center Horizontal postion. so only horizontaly
+  const deltaY = event.clientY - activeCircle.originY; // same but Vertical position
+  const distance = Math.hypot(deltaX, deltaY); // this gives us the distance the grabbed circle has moves both vertically and horizontally.
+  const startingFrequency = Tone.Frequency(activeCircle.note).toFrequency(); //Tone.Frequency tells the frequency of the note. activeCircle.note is the assigned note to the circle. toFrequency() give the number of frequency in hertz.
+  const pitch = startingFrequency * Math.pow(2, distance / 250); // a mathematical method to increase the frequency. Math.pow is supposed to raise a number to a power in my case it raises 2 to the power of distance divded by 250.
+  synth.frequency.rampTo(pitch, 0.05); //synthfrequency controls the pitch of the synthesizer. rampTo changes the frequency gradually instead of instantly. pitch is the new frequency calculated. 0.05 is the time taken for this transition to happen.
+  activeCircle.shape.setPositionPixels(event.clientX - 12, event.clientY - 12); // this allows the grabbed circle to move and that the subtraction is to ensure the circle's center is under the pointer.
 }
+
 // ---------- Setup ----------
 // Setup is run once, at the start of the program. It sets everything up for us!
 function setup() {
-  update();
-  use();
+  update(); // starts the update function
+  use(); //starts the use function
 
-  const centerX = window.innerWidth / 2;
-  const centerY = window.innerHeight / 2;
+  const windowCenterX = window.innerWidth / 2; // get the width of the window and divide by two to find the center
+  const windowCenterY = window.innerHeight / 2; // get the height of the window and divide by two to find the center
 
-  // Create the big stationary circle
-  circle = createShape("circle");
-  circle.setSize(200, 200);
-  circle.setPositionPixels(centerX - 100, centerY - 100);
+  //create big Circle
+  bigCircle = createShape("circle"); //creates the circle shape and stores it in my bigCircle variable
+  bigCircle.setSize(200, 200); // makes the circle 200 wide and 200 high
+  bigCircle.setPositionPixels(windowCenterX - 100, windowCenterY - 100); //places it in the center of the screen. 100 is subtracted so that setpositionpixels considers the center (same as before). Becasue setpositionpixels takes the top-left corner
 
-  // Create seven small circles around it
-  const radius = 65;
-  const pointSize = 24;
+  //create seven smaller circles
+  const radius = 65; // the radius of the smaller circles
+  const circleSize = 24; //the size fo the smaller circles 24 high and 24 wide in pixels
 
+  // a loop that places the seven circles evenly around the bigger circle
   for (let i = 0; i < notes.length; i++) {
     const angle = (i / notes.length) * Math.PI * 2;
 
-    const x = centerX + radius * Math.cos(angle) - pointSize / 2;
-    const y = centerY + radius * Math.sin(angle) - pointSize / 2;
+    // calculate the position of each small circle on the screen
+    const x = windowCenterX + radius * Math.cos(angle) - circleSize / 2;
+    const y = windowCenterY + radius * Math.sin(angle) - circleSize / 2;
 
-    const point = createShape("circle"); //Use the create shape function provided by shape.js to create tiny circles and change their appearance and positions.
-    point.setSize(24, 24); // This method comes from the shape functionality Imported at first. Sets the size of the circles
-    point.setColour(60, 100, 50, 1); //Sets the color of the circle
-    point.setPositionPixels(x, y); //sets the position of the circles
+    // the details for the smaller circles
+    const point = createShape("circle");
+    point.setSize(circleSize, circleSize);
+    point.setColour(60, 100, 50, 1);
+    point.setPositionPixels(x, y);
 
+    //stores info about each small circle so that the program can play it's note, recognize it, and move it.
     circles.push({
-      shape: point, // tha actual yellow ball
-      note: notes[i], // the musial note assigned to the ball
-      homeX: x + pointSize / 2, // original horizontal centre
-      homeY: y + pointSize / 2, // original vertical centre
+      shape: point,
+      note: notes[i],
+      originX: x + circleSize / 2,
+      originY: y + circleSize / 2,
     });
-
-    console.log("Created point", i, x, y);
   }
 
+  // calling the event handler/ functions
   window.addEventListener("pointerdown", pointerDown);
   window.addEventListener("pointermove", pointerMove);
   window.addEventListener("pointerup", pointerUp);
 }
-
 setup();
