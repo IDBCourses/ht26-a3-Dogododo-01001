@@ -1,21 +1,16 @@
 # My instrument
 
-**Play it here:** <!-- Paste your GitHub Pages link here, e.g. https://idbcourses.github.io/your-repo-name/ -->
+**Play it here:** <!-- https://idbcourses.github.io/ht26-a3-Dogododo-01001/-->
 
-**Name:** <!-- Your name and MAU ID -->
+**Name:** <!-- Dina Dabous  AD\aq8831 -->
 
-<!-- One or two sentences: what kind of instrument is it, and what is it like to play? -->
+<!-- A frequency changer -->
 
 ## How to play
 
-<!-- Fill in the table with a row for everything the player can do with the pointer: clicking, moving slowly or fast, moving in circles, holding still... Say what happens to the sound and to the shapes. If you added keys, give them rows too. -->
+<!-- Use the touchpad to move over to a yellow circle. Once hovering above a yellow circle press down on the touchpad and hold so that you grab the yellow circle. Once you grab it move it around and listen for feedback. You can also try to let go while grabbing the yellow circle. -->
 
-| When you...  | The sound...                         | The shapes... |
-| ------------ | ------------------------------------ | ------------- |
-| Click or tap | Plays a C4 (the example: replace it) | Nothing yet   |
-|              |                                      |               |
 
-<!-- Anything else a player needs to know: how to get started, a good thing to try first. -->
 
 ---
 
