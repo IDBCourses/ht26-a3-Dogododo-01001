@@ -1,14 +1,14 @@
 # My instrument
 
-**Play it here:** <!-- https://idbcourses.github.io/ht26-a3-Dogododo-01001/-->
+**Play it here:**  https://idbcourses.github.io/ht26-a3-Dogododo-01001/
 
-**Name:** <!-- Dina Dabous  AD\aq8831 -->
+**Name:**  Dina Dabous  AD\aq8831 
 
-<!-- A frequency changer -->
+ A frequency changer
 
 ## How to play
 
-<!-- Use the touchpad to move over to a yellow circle. Once hovering above a yellow circle press down on the touchpad and hold so that you grab the yellow circle. Once you grab it move it around and listen for feedback. You can also try to let go while grabbing the yellow circle. -->
+Use the touchpad to move over to a yellow circle. Once hovering above a yellow circle press down on the touchpad and hold so that you grab the yellow circle. Once you grab it move it around and listen for feedback. You can also try to let go while grabbing the yellow circle.
 
 
 
