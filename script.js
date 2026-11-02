@@ -24,108 +24,105 @@
 import { createShape } from "./shape.js"; //imports what's in shape.js
 
 // ---------- Settings ----------
-// Settings variables should contain all of the "fixed" parts of your programs
-// For example: which notes you can play, how fast things move, the tempo.
+//contains fixed values of my instrument
 
-const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"]; // Array of notes.
-const maxStretch = 250; //the maximum allowed distance between the original grab point and the pointer. In pixels
-const circleRadius = 50; // the radius of the circle in pixels
+const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"]; // Array of notes that I want my instrument to play. I used const because I don't intend to change or re-assign the array of notes for the instrument.
+const maxStretch = 250; //the maximum allowed distance between the original grab point and the pointer. Measured in pixels
 
 // ---------- State ----------
-// State variables are the parts of your program that change over time.
-// For example: where the pointer is, how fast it's moving, or whether a drone is on.
+// info about what is happening live. Things that are changin belong in state. Fixed stuff belongs in settings.
+let isBroken = false;
+let startX = 0;
+let startY = 0;
+let circles = []; //holds the seven smaller circles. Will later use circles.push to give info
+let activeCircle = null; //remembers which circle you are currently grabbing. Starts null becasue user haasn't grabbed a circle when the program first starts.
+let circle; //declaring the variable "circle". Will use later to station the big circle in the middle.
 
-let points = []; //holds the seven smaller circles/points
-let activePoint = null; //remembers which poit you are currently grabbing. Starts null becasue no point is grabbed at first.
-let startX = 0; // remembers the horizontal position where the user first grabbed grabbed the circle
-let startY = 0; // remembers the vertical position where the user first grabbed the circle
-//the initial value is zero because I don't know which position the player is gonna grab the circle from.
-let isBroken = false; //The circles have not been dragegd to the limit
-
-let circle; //declaring the variable "circle"
-let hasPlayedNote = false;
 // ---------- Sound ----------
 // Make the instruments and plug them into the speakers.
-const synth = new Tone.Synth().toDestination(); // can play several notes at once
+const synth = new Tone.Synth().toDestination(); // Plays one note at once. Also I need to change the frequency of each circle on its own later which is why I changed from Tone.PolySynth to Tone.Synth. In other words it's Monophonic.
 
 // ---------- Update ----------
 // Update the state. This is called every 100ms.
 function update() {
-  setTimeout(update, 100); // call update() again in 100 milliseconds. I can use "update" to calculate pointer speed and stretch distance
+  setTimeout(update, 100);
 }
-
 // ---------- Use ----------
 // Use the state to make sound and move shapes. This is called every 100ms.
 function use() {
-  setTimeout(use, 100); // call use() again in 100 milliseconds. I can use "use" to update the sound and visuals.
+  setTimeout(use, 100);
 }
 
 // ---------- Controls (Event Handlers) ----------
-// Plays a note whenerver the pointer gose down regardless where y or x axis.
-function pointerDown(event) {
-  Tone.start();
+// Functions that should respond to events
 
-  for (const point of points) {
-    const distance = Math.hypot(
-      event.clientX - point.homeX,
-      event.clientY - point.homeY,
+function pointerDown(event) {
+  Tone.start(); //starts the Tone.js audio context. Used to play a sound when user interacts
+
+  for (const circle of circles) {
+    // the program goes through the 7 cricles to see if the user has graabbed one.
+    let distance = Math.hypot(
+      //calculates the pythagoras. In other words the distance from the point of origin to the current.
+      event.clientX - circle.homeX, //"homeX" is the original horizontal centre of the grabbed small circle. It is stored in "setup"
+      event.clientY - circle.homeY, //"homeY" is the original vertical centre of the grabbed small circle. It is stored in "setup"
     );
 
     if (distance < 20) {
-      activePoint = point;
-      startX = point.homeX;
-      startY = point.homeY;
+      activeCircle = circle; //tells the program which circles is currently selected
+      startX = circle.homeX;
+      startY = circle.homeY;
 
-      synth.triggerAttack(point.note);
+      synth.triggerAttack(circle.note);
 
-      console.log("Playing note:", point.note);
+      console.log("Playing note:", circle.note);
       return;
     }
   }
 }
 
 function pointerUp(event) {
-  if (activePoint !== null) {
+  if (activeCircle !== null) {
     synth.triggerRelease();
 
-    activePoint.shape.setPositionPixels(
-      activePoint.homeX - 12,
-      activePoint.homeY - 12,
+    activeCircle.shape.setPositionPixels(
+      activeCircle.homeX - 12,
+      activeCircle.homeY - 12,
     );
   }
 
-  activePoint = null;
+  activeCircle = null;
   isBroken = false;
 }
 
 function pointerMove(event) {
-  if (activePoint === null) {
+  if (activeCircle === null) // checks wether a circle is selected
+  {
     return;
   }
 
-  const deltaX = event.clientX - activePoint.homeX;
-  const deltaY = event.clientY - activePoint.homeY;
+  const deltaX = event.clientX - activeCircle.homeX;
+  const deltaY = event.clientY - activeCircle.homeY;
   const distance = Math.hypot(deltaX, deltaY);
 
   if (distance >= maxStretch) {
     synth.triggerRelease();
 
-    activePoint.shape.setPositionPixels(
-      activePoint.homeX - 12,
-      activePoint.homeY - 12,
+    activeCircle.shape.setPositionPixels(
+      activeCircle.homeX - 12,
+      activeCircle.homeY - 12,
     );
 
-    activePoint = null;
+    activeCircle = null;
     isBroken = true;
     return;
   }
 
-  const baseFrequency = Tone.Frequency(activePoint.note).toFrequency();
+  const baseFrequency = Tone.Frequency(activeCircle.note).toFrequency();
   const pitch = baseFrequency * Math.pow(2, distance / maxStretch);
 
   synth.frequency.rampTo(pitch, 0.05);
 
-  activePoint.shape.setPositionPixels(event.clientX - 12, event.clientY - 12);
+  activeCircle.shape.setPositionPixels(event.clientX - 12, event.clientY - 12);
 }
 // ---------- Setup ----------
 // Setup is run once, at the start of the program. It sets everything up for us!
@@ -151,12 +148,12 @@ function setup() {
     const x = centerX + radius * Math.cos(angle) - pointSize / 2;
     const y = centerY + radius * Math.sin(angle) - pointSize / 2;
 
-    const point = createShape("circle");
-    point.setSize(24, 24);
-    point.setColour(60, 100, 50, 1);
-    point.setPositionPixels(x, y);
+    const point = createShape("circle"); //Use the create shape function provided by shape.js to create tiny circles and change their appearance and positions.
+    point.setSize(24, 24); // This method comes from the shape functionality Imported at first. Sets the size of the circles
+    point.setColour(60, 100, 50, 1); //Sets the color of the circle
+    point.setPositionPixels(x, y); //sets the position of the circles
 
-    points.push({
+    circles.push({
       shape: point, // tha actual yellow ball
       note: notes[i], // the musial note assigned to the ball
       homeX: x + pointSize / 2, // original horizontal centre
